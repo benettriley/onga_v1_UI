@@ -14,6 +14,12 @@ font blob). The design rules are in [ONGA_UI.md](ONGA_UI.md).
 | `PixelLogo.h` | the animated pixel logo tile and a 5×7 pixel font |
 | `Panel.h` | `OngaEditor`: 820 × 580 design size, scales as a unit |
 
+Add it to a plug-in as a submodule (details and CI setup in ONGA_UI.md §9):
+
+```sh
+git submodule add https://github.com/benettriley/onga_v1_UI onga-ui
+```
+
 ```cmake
 add_subdirectory(onga-ui)
 target_link_libraries(MyPlugin PRIVATE onga_ui)

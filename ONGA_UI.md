@@ -3,7 +3,7 @@
 One look for every Onga Tools plug-in. This file is the source of truth; the C++ in
 `include/onga_ui/` implements it. If the two disagree, fix the code.
 
-Reference build: **ONGA BLOOM**. Board designs for all five plug-ins live in the
+Reference build: **ONGA BLOOM** ([onga_bloom](https://github.com/benettriley/onga_bloom)). Board designs for all five plug-ins live in the
 *Onga Anchor Directions* design canvas (Suite v1 page).
 
 ---
@@ -205,20 +205,35 @@ SelectorRow low   { apvts, "lowcut", "LOW CUT (HZ)", { "OFF", "80", "120" } };
 PixelLogo  logo   { "ONGA NAME", myLogoFrame };
 ```
 
-See `Source/PluginEditor.cpp` in onga_bloom for a complete panel.
+See `Source/PluginEditor.cpp` in [onga_bloom](https://github.com/benettriley/onga_bloom) for a complete panel.
 
-## 9. Moving the kit to its own repo
+## 9. Adding the kit to a plug-in
 
-The kit lives in `onga_bloom/onga-ui/` until the `onga-UI` repo exists. To move it with
-its history:
+The kit lives in [benettriley/onga_v1_UI](https://github.com/benettriley/onga_v1_UI) and
+each plug-in pulls it in as a git submodule at `onga-ui/`:
 
 ```sh
-cd onga_bloom
-git subtree split --prefix onga-ui -b onga-ui-export
-git push git@github.com:benettriley/onga-UI.git onga-ui-export:main
-git rm -r onga-ui && git commit -m "Move onga-ui to its own repo"
-git submodule add git@github.com:benettriley/onga-UI.git onga-ui
+git submodule add https://github.com/benettriley/onga_v1_UI onga-ui
 ```
 
-`add_subdirectory(onga-ui)` keeps working unchanged. Other plug-ins add the same
-submodule and link `onga_ui`.
+```cmake
+add_subdirectory(onga-ui)                        # after JUCE is available
+target_link_libraries(MyPlugin PRIVATE onga_ui)
+```
+
+Clone plug-ins with `git clone --recursive`, or run `git submodule update --init` in an
+existing clone. In GitHub Actions, check out with submodules:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    submodules: recursive
+    token: ${{ secrets.ONGA_UI_TOKEN || github.token }}
+```
+
+This repo is private, so the default Actions token can't read it from another repo.
+Either make this repo public, or add a fine-grained personal access token with
+read-only *Contents* access to it as the `ONGA_UI_TOKEN` secret in each plug-in repo.
+
+To pick up kit changes in a plug-in: `git submodule update --remote onga-ui`, rebuild,
+check the panel, commit the new submodule pointer.
