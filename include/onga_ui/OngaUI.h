@@ -8,6 +8,8 @@
     Chrome.h     faceplate, title bar, footer
     Dials.h      HeroDial, SmallDial
     Selector.h   SelectorRow, StepReadout
+    Meter.h      LevelMeter
+    LookAndFeel.h OngaLookAndFeel for JUCE stock widgets, menus, dialogs
     Screen.h     the dark display: background, title, header, legend
     PixelLogo.h  the animated pixel logo tile + 5x7 pixel font
     Panel.h      OngaEditor: fixed-aspect scaling editor shell
@@ -19,6 +21,8 @@
 #include "Chrome.h"
 #include "Dials.h"
 #include "Selector.h"
+#include "Meter.h"
+#include "LookAndFeel.h"
 #include "Screen.h"
 #include "PixelLogo.h"
 #include "Panel.h"

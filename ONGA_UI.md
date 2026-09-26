@@ -115,9 +115,13 @@ One per plug-in: its macro control. 184 × 184 design px.
 - Label above (12 px bold, 2 px tracking), readout below (13 px, min 64 wide).
 
 ### Small dial — `SmallDial`
-Every other continuous control. 44 × 44 design px.
+Every other continuous control. 44 × 44 design px by default.
 - Flat ink face with white 2 px pointer. 7 plain ticks (2 px) around it.
 - Label above (10 px bold), readout below (10 px, min 56 wide).
+- Options: `setDialSize` (e.g. 72 for a featured dial, 36 in a tight row),
+  `setEndLabels ("CLOSE", "FAR")` (9 px subInk either side), `setDetents`,
+  `setHintTick` (a suggested position: that tick turns red), `setUppercaseValue`
+  for word readouts, `setShowLabel (false)` when the label sits beside it.
 
 ### Selector row — `SelectorRow`
 The stepped switch for every choice parameter.
@@ -129,10 +133,33 @@ The stepped switch for every choice parameter.
 - **Selected = ink cell with an inset 1 px paper line (2 px in).**
 - Optional captions under each button (9 px subInk, selected bold).
 - Keyboard: ← / →. Focus: 2 px blue outline.
+- Options: `setShowRail (false)` and `setFillHeight (true)` for a big top-row
+  selector, `setSubLabels` for a second 9 px line inside each button,
+  `setGreyedOut (true)` when the control doesn't apply (plate dither over it, clicks
+  ignored, the parameter keeps its value).
 
 ### Readout — `drawReadout (g, rect, text)`
 Ink box, paper text, Space Mono regular, centred, 2 × 8 px padding. Clickable readouts
 that step a choice use `StepReadout`.
+
+### Level meter — `LevelMeter`
+Thin vertical meter on the screen checker: 1 px ink outline, 20 cream segments on dim,
+top two red, peak-hold segment stays lit. `setPeak (linear)` from a timer.
+
+### Stock widgets — `OngaLookAndFeel`
+Set it on the panel (scale 1) for dropdowns, action buttons and checkboxes, and keep a
+second instance at window scale (`setScale (width / 820)`) for popup menus, alert
+windows, tooltips and full-window overlays.
+- Buttons and dropdowns: paper, 1 px ink, dithered 3 px shadow; pressed/on = ink with
+  an inset paper line. `getProperties().set ("onga.flat", true)` drops the shadow
+  (small footer buttons).
+- Checkbox: paper square with an ink X. Menus: paper, ink highlight, dotted separators.
+- Dialog overlays: dim the window with the ink checker; the dialog is a bar-surface box
+  with a 1 px outline and dithered shadow, its title between pinstripes.
+
+### Footer buttons
+If a plug-in needs presets, settings or bypass on the panel, they go in the footer as
+small flat buttons after `ONGA TOOLS`, never in the title bar.
 
 ### Screen — `paintScreen`, `drawScreenTitle`, `drawScreenHeader`, `drawLegend`
 - Screen surface, 1 px ink outline.
@@ -169,7 +196,7 @@ Each animation lives with its plug-in (a `LogoFrame (float phase)` function), no
 ## 7. Rules checklist (review every panel against this)
 
 - [ ] Logo tile top-left, 3 px frame, name in pixel letters, one slow loop.
-- [ ] Title bar is only stripes + name. Footer is `ONGA TOOLS` + one status line.
+- [ ] Title bar is only stripes + name. Footer is `ONGA TOOLS` (+ any flat footer buttons) + one status line.
 - [ ] Surfaces: faceplate darkest, plates lighter, buttons lightest, all dithered except paper.
 - [ ] Exactly one hero dial (red pointer + arc). All other dials are small, white pointer.
 - [ ] Every choice parameter is a `SelectorRow` with tick rail, shadow and inset selection.
@@ -205,7 +232,9 @@ SelectorRow low   { apvts, "lowcut", "LOW CUT (HZ)", { "OFF", "80", "120" } };
 PixelLogo  logo   { "ONGA NAME", myLogoFrame };
 ```
 
-See `Source/PluginEditor.cpp` in [onga_bloom](https://github.com/benettriley/onga_bloom) for a complete panel.
+Complete panels: `Source/plugin/PluginEditor.cpp` in
+[onga_transformer](https://github.com/benettriley/onga_transformer) (stock widgets,
+menus, a dialog overlay) and `Source/PluginEditor.cpp` in [onga_bloom](https://github.com/benettriley/onga_bloom) for a complete panel.
 
 ## 9. Adding the kit to a plug-in
 

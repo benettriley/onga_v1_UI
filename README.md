@@ -9,7 +9,9 @@ font blob). The design rules are in [ONGA_UI.md](ONGA_UI.md).
 | `Paint.h` | Space Mono fonts, checker dither, dithered shadows, plates, labels, readouts |
 | `Chrome.h` | faceplate, pinstriped title bar, footer |
 | `Dials.h` | `HeroDial`, `SmallDial` (bound to APVTS parameters) |
-| `Selector.h` | `SelectorRow` (tick rail, shadow, inset selection), `StepReadout` |
+| `Selector.h` | `SelectorRow` (tick rail, shadow, inset selection, grey-out), `StepReadout` |
+| `Meter.h` | `LevelMeter` (segmented, peak hold) |
+| `LookAndFeel.h` | `OngaLookAndFeel` for JUCE buttons, dropdowns, checkboxes, menus, dialogs, tooltips |
 | `Screen.h` | dark screen background, title, header, legend |
 | `PixelLogo.h` | the animated pixel logo tile and a 5×7 pixel font |
 | `Panel.h` | `OngaEditor`: 820 × 580 design size, scales as a unit |

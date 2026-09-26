@@ -40,6 +40,19 @@ public:
 
     void setButtonTextSize (float px) { buttonPx = px; repaint(); }
 
+    /** Hide the tick rail (e.g. a big top-row selector that stands on its own). */
+    void setShowRail (bool b) { showRail = b; repaint(); }
+
+    /** Buttons stretch to fill the component's height instead of the standard 26 px. */
+    void setFillHeight (bool b) { fillHeight = b; repaint(); }
+
+    /** A second, smaller line inside each button (e.g. "TUBE + TRANSFORMER"). */
+    void setSubLabels (juce::StringArray subs) { subLabels = std::move (subs); repaint(); }
+
+    /** Grey the whole row out with the plate dither and ignore clicks (e.g. a control
+        that doesn't apply to the current mode). The parameter keeps its value. */
+    void setGreyedOut (bool g) { if (g != greyed) { greyed = g; setWantsKeyboardFocus (! g); repaint(); } }
+
     void paint (juce::Graphics& g) override
     {
         auto r = getLocalBounds().toFloat();
@@ -50,10 +63,16 @@ public:
         }
         r.removeFromRight (metrics::shadow);   // room for the shadow
 
-        const auto rail = r.removeFromTop (metrics::railH);
-        r.removeFromTop (kGap);
-        bar = r.removeFromTop (metrics::selectorH);
+        juce::Rectangle<float> rail;
+        if (showRail)
+        {
+            rail = r.removeFromTop (metrics::railH);
+            r.removeFromTop (kGap);
+        }
+        const float captionRoom = captions.isEmpty() ? 0.0f : kGap + kCaptionH;
+        bar = r.removeFromTop (fillHeight ? r.getHeight() - metrics::shadow - captionRoom : metrics::selectorH);
         r.removeFromTop (metrics::shadow);
+        const int shown = greyed ? -1 : selected;
 
         const int n = names.size();
         const float segW = bar.getWidth() / (float) n;
@@ -61,11 +80,12 @@ public:
 
         // Tick rail.
         g.setColour (colours::ink);
-        for (float x = centreX (0); x < centreX (n - 1); x += 2.0f)
-            g.fillRect (juce::Rectangle<float> (std::round (x), rail.getY() + 1.0f, 1.0f, 1.0f));
-        for (int i = 0; i < n; ++i)
+        if (showRail)
+            for (float x = centreX (0); x < centreX (n - 1); x += 2.0f)
+                g.fillRect (juce::Rectangle<float> (std::round (x), rail.getY() + 1.0f, 1.0f, 1.0f));
+        for (int i = 0; showRail && i < n; ++i)
         {
-            const bool sel = i == selected;
+            const bool sel = i == shown;
             const float w = sel ? 3.0f : 1.0f, h = sel ? 7.0f : 5.0f;
             g.fillRect (juce::Rectangle<float> (std::round (centreX (i) - w * 0.5f), rail.getBottom() - h, w, h));
         }
@@ -79,16 +99,28 @@ public:
         for (int i = 0; i < n; ++i)
         {
             auto seg = juce::Rectangle<float> (bar.getX() + segW * (float) i, bar.getY(), segW, bar.getHeight());
-            if (i == selected)
+            const bool sel = i == shown;
+            if (sel)
             {
                 g.setColour (colours::ink);
                 g.fillRect (seg);
                 g.setColour (colours::paper);
                 g.drawRect (seg.reduced (2.0f), 1.0f);   // the inset white line
             }
-            g.setColour (i == selected ? colours::paper : colours::ink);
+            g.setColour (sel ? colours::paper : colours::ink);
             g.setFont (font);
-            g.drawText (names[i], seg.reduced (2.0f, 0.0f), juce::Justification::centred, false);
+            if (i < subLabels.size() && subLabels[i].isNotEmpty())
+            {
+                const float subPx = type::caption, lineH = buttonPx * 1.25f, total = lineH + 4.0f + subPx * 1.3f;
+                const float top = seg.getCentreY() - total * 0.5f;
+                g.drawText (names[i], juce::Rectangle<float> (seg.getX(), top, seg.getWidth(), lineH), juce::Justification::centred, false);
+                g.setColour (sel ? surfaces::plate.base : colours::subInk);
+                g.setFont (Fonts::get().regular (subPx));
+                g.drawText (subLabels[i], juce::Rectangle<float> (seg.getX(), top + lineH + 4.0f, seg.getWidth(), subPx * 1.3f),
+                            juce::Justification::centred, false);
+            }
+            else
+                g.drawText (names[i], seg.reduced (2.0f, 0.0f), juce::Justification::centred, false);
 
             if (i > 0)
             {
@@ -99,6 +131,9 @@ public:
         g.setColour (hasKeyboardFocus (false) ? colours::blue : colours::ink);
         g.drawRect (bar, hasKeyboardFocus (false) ? 2.0f : metrics::hairline);
 
+        if (greyed)
+            fillChecker (g, bar.reduced (metrics::hairline), surfaces::plate.base);
+
         // Captions.
         if (! captions.isEmpty())
         {
@@ -107,7 +142,7 @@ public:
             g.setColour (colours::subInk);
             for (int i = 0; i < n && i < captions.size(); ++i)
             {
-                g.setFont (i == selected ? Fonts::get().bold (type::caption) : Fonts::get().regular (type::caption));
+                g.setFont (i == shown ? Fonts::get().bold (type::caption) : Fonts::get().regular (type::caption));
                 g.drawText (captions[i], juce::Rectangle<float> (bar.getX() + segW * (float) i, caps.getY(), segW, caps.getHeight()),
                             juce::Justification::centred, false);
             }
@@ -116,12 +151,13 @@ public:
 
     void mouseDown (const juce::MouseEvent& e) override
     {
-        if (bar.contains (e.position))
+        if (! greyed && bar.contains (e.position))
             select (juce::jlimit (0, names.size() - 1, (int) ((e.position.x - bar.getX()) / bar.getWidth() * (float) names.size())));
     }
 
     bool keyPressed (const juce::KeyPress& k) override
     {
+        if (greyed) return false;
         if (k == juce::KeyPress::leftKey)  { select (juce::jmax (0, selected - 1)); return true; }
         if (k == juce::KeyPress::rightKey) { select (juce::jmin (names.size() - 1, selected + 1)); return true; }
         return false;
@@ -139,11 +175,12 @@ private:
 
     juce::RangedAudioParameter& param;
     juce::String label;
-    juce::StringArray names, captions;
+    juce::StringArray names, captions, subLabels;
     juce::ParameterAttachment attachment;
     juce::Rectangle<float> bar;
     float buttonPx = type::label;
     int selected = 0;
+    bool showRail = true, fillHeight = false, greyed = false;
 };
 
 //==============================================================================

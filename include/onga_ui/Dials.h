@@ -85,15 +85,17 @@ namespace detail
     }
 
     /** Paints a small dial into a square area (design size 44 x 44, drawn in 64-unit space). */
-    inline void paintSmall (juce::Graphics& g, juce::Rectangle<float> area, float pos, int ticks, juce::Colour faceFill)
+    inline void paintSmall (juce::Graphics& g, juce::Rectangle<float> area, float pos, int ticks, juce::Colour faceFill,
+                            int hintTick = -1)
     {
         const float s = area.getWidth() / 64.0f;
         const auto c = area.getCentre();
-        g.setColour (colours::ink);
         for (int i = 0; i < ticks; ++i)
         {
             const float d = -135.0f + 270.0f * (float) i / (float) juce::jmax (1, ticks - 1);
-            g.drawLine ({ polar (c, 26.0f * s, d), polar (c, 30.0f * s, d) }, 2.0f * s);
+            const bool hint = i == hintTick;
+            g.setColour (hint ? colours::red : colours::ink);
+            g.drawLine ({ polar (c, 26.0f * s, d), polar (c, (hint ? 32.0f : 30.0f) * s, d) }, (hint ? 3.0f : 2.0f) * s);
         }
         const auto disc = juce::Rectangle<float> (42.0f * s, 42.0f * s).withCentre (c);
         g.setColour (faceFill);
@@ -120,7 +122,25 @@ public:
         slider.setWantsKeyboardFocus (true);
         slider.setTitle (labelText);
         slider.setLookAndFeel (&lnf);
-        slider.onValueChange = [this] { repaint(); };
+        slider.onValueChange = [this]
+        {
+            // Detents: snap while dragging when close to a marked value.
+            if (! detents.empty() && slider.isMouseButtonDown())
+            {
+                const double span = slider.getMaximum() - slider.getMinimum();
+                for (auto d : detents)
+                {
+                    const double dist = std::abs (slider.getValue() - d);
+                    if (dist < snapRange * span && dist > 1.0e-9)
+                    {
+                        slider.setValue (d, juce::sendNotificationSync);
+                        break;
+                    }
+                }
+            }
+            repaint();
+        };
+        slider.onDragStart = [this] { if (onUserChange) onUserChange(); };
         addAndMakeVisible (slider);
         attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (state, paramID, slider);
         slider.setDoubleClickReturnValue (true, param.convertFrom0to1 (param.getDefaultValue()));
@@ -132,9 +152,24 @@ public:
     void setFaceColour (juce::Colour c) { face = c; repaint(); }
     void setAccent (juce::Colour c) { accent = c; repaint(); }
 
+    /** Values (in parameter units) the dial snaps to while dragging, within snapRange of the full range. */
+    void setDetents (std::vector<double> values, double range = 0.03) { detents = std::move (values); snapRange = range; }
+
+    /** Show the readout text in capitals (for word values like NORMAL). */
+    void setUppercaseValue (bool b) { upperValue = b; repaint(); }
+
+    /** Called when the user starts dragging. */
+    std::function<void()> onUserChange;
+
+    juce::Slider& getSlider() noexcept { return slider; }
+
 protected:
     float position() { return (float) slider.valueToProportionOfLength (slider.getValue()); }
-    juce::String valueText() const { return param.getCurrentValueAsText(); }
+    juce::String valueText() const
+    {
+        const auto t = param.getCurrentValueAsText();
+        return upperValue ? t.toUpperCase() : t;
+    }
 
     /** The slider draws nothing: the component paints the dial so it can sit in a
         design-space layout. The slider just owns mouse, keyboard and host automation. */
@@ -149,6 +184,9 @@ protected:
     juce::Slider slider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
     juce::Colour face = colours::ink, accent = colours::red;
+    std::vector<double> detents;
+    double snapRange = 0.03;
+    bool upperValue = false;
 };
 
 //==============================================================================
@@ -191,7 +229,11 @@ private:
 };
 
 //==============================================================================
-/** Small dial with label and readout. Natural size 80 x 86. */
+/*
+    Small dial with label above and readout below. Natural size 80 x 86 at the default
+    44 px dial. Options: a different dial size, tick count, words either side of the dial
+    (e.g. CLOSE / FAR, bottom-aligned in 9 px caption type) and a highlighted "hint" tick.
+*/
 class SmallDial final : public DialBase
 {
 public:
@@ -201,14 +243,32 @@ public:
     static constexpr float kLabelH = 15.0f, kGap = 4.0f, kReadH = 19.0f;
     static constexpr float kHeight = kLabelH + kGap + metrics::smallDial + kGap + kReadH;
 
+    /** Height for a given dial size (kHeight is for the default 44 px). */
+    static constexpr float heightFor (float dialSize) { return kLabelH + kGap + dialSize + kGap + kReadH; }
+
+    void setDialSize (float px) { dial = px; resized(); repaint(); }
+    void setEndLabels (const juce::String& left, const juce::String& right) { leftWord = left; rightWord = right; repaint(); }
+    void setHintTick (int index) { if (hint != index) { hint = index; repaint(); } }
+    void setShowLabel (bool b) { showLabel = b; resized(); repaint(); }
+
     void paint (juce::Graphics& g) override
     {
         const auto d = dialArea();
-        drawLabel (g, label, { 0.0f, d.getY() - kGap - kLabelH, (float) getWidth(), kLabelH }, juce::Justification::centred);
-        detail::paintSmall (g, d, position(), ticks, face);
+        if (showLabel)
+            drawLabel (g, label, { 0.0f, d.getY() - kGap - kLabelH, (float) getWidth(), kLabelH }, juce::Justification::centred);
+        detail::paintSmall (g, d, position(), ticks, face, hint);
+
+        if (leftWord.isNotEmpty() || rightWord.isNotEmpty())
+        {
+            g.setColour (colours::subInk);
+            g.setFont (Fonts::get().regular (type::caption));
+            const auto row = juce::Rectangle<float> (0.0f, d.getBottom() - 13.0f, (float) getWidth(), 13.0f);
+            g.drawText (leftWord, row.withRight (d.getX() - 4.0f), juce::Justification::centredRight, false);
+            g.drawText (rightWord, row.withLeft (d.getRight() + 4.0f), juce::Justification::centredLeft, false);
+        }
 
         const auto text = valueText();
-        const float w = readoutWidth (text, type::readout, 4.0f, 56.0f);
+        const float w = readoutWidth (text, type::readout, 6.0f, dial > metrics::smallDial ? 72.0f : 56.0f);
         const auto box = juce::Rectangle<float> (w, kReadH).withCentre ({ d.getCentreX(), d.getBottom() + kGap + kReadH * 0.5f });
         drawReadout (g, box, text);
 
@@ -221,10 +281,15 @@ public:
 private:
     juce::Rectangle<float> dialArea() const
     {
-        const float top = ((float) getHeight() - kHeight) * 0.5f + kLabelH + kGap;
-        return juce::Rectangle<float> (metrics::smallDial, metrics::smallDial).withCentre ({ (float) getWidth() * 0.5f, top + metrics::smallDial * 0.5f });
+        const float labelRoom = showLabel ? kLabelH + kGap : 0.0f;
+        const float total = labelRoom + dial + kGap + kReadH;
+        const float top = ((float) getHeight() - total) * 0.5f + labelRoom;
+        return juce::Rectangle<float> (dial, dial).withCentre ({ (float) getWidth() * 0.5f, top + dial * 0.5f });
     }
 
-    int ticks;
+    int ticks, hint = -1;
+    float dial = metrics::smallDial;
+    bool showLabel = true;
+    juce::String leftWord, rightWord;
 };
 } // namespace onga::ui
