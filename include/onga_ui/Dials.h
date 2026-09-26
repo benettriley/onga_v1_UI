@@ -190,7 +190,8 @@ protected:
 };
 
 //==============================================================================
-/** The one hero dial. Lay it out at least 184 wide x 246 tall (label + dial + readout). */
+/** The one hero dial. At the default 184 px dial, lay it out at least 184 wide x 246 tall
+    (label + dial + readout). setDialSize() scales the whole dial, scale and numerals included. */
 class HeroDial final : public DialBase
 {
 public:
@@ -199,6 +200,9 @@ public:
 
     static constexpr float kLabelH = 17.0f, kGap = 10.0f, kReadH = 25.0f;
     static constexpr float kHeight = kLabelH + kGap + metrics::heroDial + kGap + kReadH;
+    static constexpr float heightFor (float dialSize) { return kLabelH + kGap + dialSize + kGap + kReadH; }
+
+    void setDialSize (float px) { dial = px; resized(); repaint(); }
 
     void paint (juce::Graphics& g) override
     {
@@ -218,14 +222,16 @@ public:
             drawFocusRing (g, box);
     }
 
-    void resized() override { slider.setBounds (dialArea().reduced (20.0f).toNearestInt()); }
+    void resized() override { slider.setBounds (dialArea().reduced (20.0f * dial / metrics::heroDial).toNearestInt()); }
 
 private:
     juce::Rectangle<float> dialArea() const
     {
-        const float top = ((float) getHeight() - kHeight) * 0.5f + kLabelH + kGap;
-        return juce::Rectangle<float> (metrics::heroDial, metrics::heroDial).withCentre ({ (float) getWidth() * 0.5f, top + metrics::heroDial * 0.5f });
+        const float top = ((float) getHeight() - heightFor (dial)) * 0.5f + kLabelH + kGap;
+        return juce::Rectangle<float> (dial, dial).withCentre ({ (float) getWidth() * 0.5f, top + dial * 0.5f });
     }
+
+    float dial = metrics::heroDial;
 };
 
 //==============================================================================

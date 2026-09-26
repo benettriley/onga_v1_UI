@@ -4,6 +4,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include <functional>
+
 /*
     Selector row: the suite's stepped switch, bound to a choice parameter.
 
@@ -19,15 +21,33 @@ namespace onga::ui
 class SelectorRow final : public juce::Component
 {
 public:
+    /** Bound to a choice parameter. */
     SelectorRow (juce::AudioProcessorValueTreeState& state, const juce::String& paramID, const juce::String& labelText,
                  juce::StringArray buttonNames, juce::StringArray captionsBelow = {})
-        : param (*state.getParameter (paramID)), label (labelText), names (std::move (buttonNames)), captions (std::move (captionsBelow)),
-          attachment (param, [this] (float v) { selected = juce::roundToInt (v); repaint(); }, state.undoManager)
+        : label (labelText), names (std::move (buttonNames)), captions (std::move (captionsBelow))
+    {
+        attachment = std::make_unique<juce::ParameterAttachment> (*state.getParameter (paramID),
+                                                                  [this] (float v) { selected = juce::roundToInt (v); repaint(); },
+                                                                  state.undoManager);
+        setWantsKeyboardFocus (true);
+        setTitle (labelText);
+        attachment->sendInitialUpdate();
+    }
+
+    /** Not bound to a parameter: a view switch (e.g. which page or screen mode is shown).
+        Clicks call onChange; set the state with setSelected(). */
+    SelectorRow (const juce::String& labelText, juce::StringArray buttonNames, juce::StringArray captionsBelow = {})
+        : label (labelText), names (std::move (buttonNames)), captions (std::move (captionsBelow))
     {
         setWantsKeyboardFocus (true);
         setTitle (labelText);
-        attachment.sendInitialUpdate();
     }
+
+    /** Called with the new index when the user picks a button (view-switch rows only). */
+    std::function<void (int)> onChange;
+
+    void setSelected (int index) { if (index != selected) { selected = index; repaint(); } }
+    int getSelected() const noexcept { return selected; }
 
     static constexpr float kLabelH = 15.0f, kGap = 4.0f, kCaptionH = 13.0f;
 
@@ -169,14 +189,21 @@ public:
 private:
     void select (int i)
     {
-        if (i != selected)
-            attachment.setValueAsCompleteGesture ((float) i);
+        if (i == selected)
+            return;
+        if (attachment != nullptr)
+            attachment->setValueAsCompleteGesture ((float) i);
+        else
+        {
+            setSelected (i);
+            if (onChange)
+                onChange (i);
+        }
     }
 
-    juce::RangedAudioParameter& param;
     juce::String label;
     juce::StringArray names, captions, subLabels;
-    juce::ParameterAttachment attachment;
+    std::unique_ptr<juce::ParameterAttachment> attachment;
     juce::Rectangle<float> bar;
     float buttonPx = type::label;
     int selected = 0;

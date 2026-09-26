@@ -20,7 +20,8 @@ Reference build: **ONGA BLOOM** ([onga_bloom](https://github.com/benettriley/ong
 ## 2. Panel grid
 
 All panels are designed at **820 × 580** and scaled as a unit (`onga::ui::OngaEditor`,
-aspect locked, 75 %–200 %).
+aspect locked, 75 %–200 %). A plug-in with a lot of parameters may go taller at the same
+width (Voxmaster is 820 × 700); keep the width so the suite lines up.
 
 | Zone | Size |
 |---|---|
@@ -114,6 +115,9 @@ One per plug-in: its macro control. 184 × 184 design px.
 - Numerals 0 / 5 / 10 at r 82, 12 px bold.
 - Label above (12 px bold, 2 px tracking), readout below (13 px, min 64 wide).
 
+The hero also takes `setDialSize` (the whole dial scales, numerals included) when a
+row is shorter than 246 px.
+
 ### Small dial — `SmallDial`
 Every other continuous control. 44 × 44 design px by default.
 - Flat ink face with white 2 px pointer. 7 plain ticks (2 px) around it.
@@ -133,6 +137,9 @@ The stepped switch for every choice parameter.
 - **Selected = ink cell with an inset 1 px paper line (2 px in).**
 - Optional captions under each button (9 px subInk, selected bold).
 - Keyboard: ← / →. Focus: 2 px blue outline.
+- View switches (which page or screen mode is showing) use the same row without a
+  parameter: `SelectorRow ("CHAIN", { ... })`, `onChange`, `setSelected`. Sub-labels can
+  carry state, e.g. ON / OFF under each section in Voxmaster's CHAIN row.
 - Options: `setShowRail (false)` and `setFillHeight (true)` for a big top-row
   selector, `setSubLabels` for a second 9 px line inside each button,
   `setGreyedOut (true)` when the control doesn't apply (plate dither over it, clicks
