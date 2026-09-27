@@ -5,6 +5,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <functional>
+#include <vector>
 
 /*
     Selector row: the suite's stepped switch, bound to a choice parameter.
@@ -78,6 +79,10 @@ public:
 
     /** Grey the whole row out with the plate dither and ignore clicks (e.g. a control
         that doesn't apply to the current mode). The parameter keeps its value. */
+    /** Draw a small line icon (in a 22 x 12 box, stroked 1.5 px) instead of each name.
+        Names stay as the accessible titles. */
+    void setIcons (std::vector<juce::Path> newIcons) { icons = std::move (newIcons); repaint(); }
+
     void setGreyedOut (bool g) { if (g != greyed) { greyed = g; setWantsKeyboardFocus (! g); repaint(); } }
 
     void paint (juce::Graphics& g) override
@@ -148,6 +153,13 @@ public:
                 g.drawText (subLabels[i], juce::Rectangle<float> (seg.getX(), top + lineH + 4.0f, seg.getWidth(), subPx * 1.3f),
                             juce::Justification::centred, false);
             }
+            else if (i < (int) icons.size() && ! icons[(size_t) i].isEmpty())
+            {
+                const auto box = juce::Rectangle<float> (22.0f, 12.0f).withCentre (seg.getCentre());
+                auto icon = icons[(size_t) i];
+                icon.applyTransform (juce::AffineTransform::translation (box.getX(), box.getY()));
+                g.strokePath (icon, juce::PathStrokeType (1.5f));
+            }
             else
                 g.drawText (names[i], seg.reduced (2.0f, 0.0f), juce::Justification::centred, false);
 
@@ -214,6 +226,7 @@ private:
 
     juce::String label;
     juce::StringArray names, captions, subLabels;
+    std::vector<juce::Path> icons;
     std::unique_ptr<juce::ParameterAttachment> attachment;
     juce::Rectangle<float> bar;
     float buttonPx = type::label;

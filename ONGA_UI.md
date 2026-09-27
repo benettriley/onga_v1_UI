@@ -147,7 +147,8 @@ The stepped switch for every choice parameter.
 - `setNames (…)` swaps the buttons at runtime (magEQ's PRESET row follows the
   MASTER / TRACK bank). `onUserChange` fires after any pick made by the user, in
   both modes, so a plugin can react to hands-on edits (magEQ hands control back from
-  AUTOPILOT this way). Pass an empty label to drop the header when the row sits
+  AUTOPILOT this way). `setIcons (paths)` draws a small line icon (22 x 12, 1.5 px
+  stroke) in place of each name, e.g. Panna's SHAPE row. Pass an empty label to drop the header when the row sits
   beside a plate label.
 
 ### Readout — `drawReadout (g, rect, text)`
