@@ -144,6 +144,11 @@ The stepped switch for every choice parameter.
   selector, `setSubLabels` for a second 9 px line inside each button,
   `setGreyedOut (true)` when the control doesn't apply (plate dither over it, clicks
   ignored, the parameter keeps its value).
+- `setNames (…)` swaps the buttons at runtime (magEQ's PRESET row follows the
+  MASTER / TRACK bank). `onUserChange` fires after any pick made by the user, in
+  both modes, so a plugin can react to hands-on edits (magEQ hands control back from
+  AUTOPILOT this way). Pass an empty label to drop the header when the row sits
+  beside a plate label.
 
 ### Readout — `drawReadout (g, rect, text)`
 Ink box, paper text, Space Mono regular, centred, 2 × 8 px padding. Clickable readouts

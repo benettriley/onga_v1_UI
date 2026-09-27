@@ -47,6 +47,13 @@ public:
     std::function<void (int)> onChange;
 
     void setSelected (int index) { if (index != selected) { selected = index; repaint(); } }
+
+    /** Called after any pick the user makes, in either mode (e.g. to hand control back
+        from an automatic mode). */
+    std::function<void()> onUserChange;
+
+    /** Replace the button names (e.g. a preset row whose bank changes). */
+    void setNames (juce::StringArray newNames) { names = std::move (newNames); repaint(); }
     int getSelected() const noexcept { return selected; }
 
     static constexpr float kLabelH = 15.0f, kGap = 4.0f, kCaptionH = 13.0f;
@@ -95,6 +102,8 @@ public:
         const int shown = greyed ? -1 : selected;
 
         const int n = names.size();
+        if (n == 0)
+            return;
         const float segW = bar.getWidth() / (float) n;
         const auto centreX = [&] (int i) { return bar.getX() + segW * ((float) i + 0.5f); };
 
@@ -189,7 +198,7 @@ public:
 private:
     void select (int i)
     {
-        if (i == selected)
+        if (i == selected || i < 0 || i >= names.size())
             return;
         if (attachment != nullptr)
             attachment->setValueAsCompleteGesture ((float) i);
@@ -199,6 +208,8 @@ private:
             if (onChange)
                 onChange (i);
         }
+        if (onUserChange)
+            onUserChange();
     }
 
     juce::String label;
